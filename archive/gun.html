@@ -1,0 +1,189 @@
+<html>
+<link rel="stylesheet" type="text/css" href="css/style.css">
+
+<head></head>
+
+<body>
+
+    <!-- Include other libraries here (keep three.js at the top): -->
+    <script src="js/Three.js"></script>
+    <script src="js/physi.js"></script>
+    <script src="js/Flight_controls.js"></script>
+    <!--<script src="js/OrbitControls.js"></script>-->
+
+    <script>
+        // Add variables that are defined in other libraries below to avoid warnings:
+        /* global THREE, Scoreboard, Physijs */
+
+        // ****** START CODING HERE! ****** 
+        Physijs.scripts.worker = 'js/physijs_worker.js';
+        Physijs.scripts.ammo = 'ammo.js';
+        
+        var bullets = [];
+        //var gun;
+        //var gun_position_x = 5;
+        //var gun_position_z = 0;
+
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+
+        var scene = new Physijs.Scene();
+        scene.setGravity(new THREE.Vector3(0, 0, 0));
+
+        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+
+        var marker = new THREE.Object3D();
+        marker.add(camera);
+        scene.add(marker);
+
+        var controls = new THREE.FlyControls(marker);
+        controls.movementSpeed = 250;
+        controls.rollSpeed = Math.PI / 10;
+
+        var clock = new THREE.Clock();
+
+        //var controls = new THREE.OrbitControls(camera);
+
+        //controls.update() must be called after any manual changes to the camera's transform
+        camera.position.set(0, 15, 200);
+        //controls.update();
+
+        function animate() {
+            scene.simulate();
+            requestAnimationFrame(animate);
+
+            // required if controls.enableDamping or controls.autoRotate are set to true
+            //controls.update();
+
+            controls.update(clock.getDelta());
+
+            renderer.render(scene, camera);
+
+         
+        }
+
+
+
+        var modelobj = new THREE.ObjectLoader();
+        var Shoop;
+
+        modelobj.load('modils/spooce-shoops/green-spaceship.json', function(SpooceShoop) {
+            scene.add(SpooceShoop);
+            SpooceShoop.position.set(0, 0, 0);
+            SpooceShoop.scale.set(5, 5, 7.5);
+            marker.add(SpooceShoop);
+            Shoop = SpooceShoop;
+        });
+
+        var astroidloader = new THREE.ObjectLoader();
+
+        astroidloader.load('modils/planetiod/asteroid.json', function(obj) {
+            scene.add(obj);
+            obj.position.set(0, 0, 0);
+            obj.scale.set(10, 10, 10);
+        });
+
+        // var trippy = new THREE.PointLight(254734, 10000, 10000, 0);
+        // trippy.position.set(0, 0, 0);
+        // scene.add(trippy);
+
+        var doomlight = new THREE.PointLight(565656556565, 15, 10000, 10);
+        doomlight.position.set(1000, 1000, 1000);
+        scene.add(doomlight);
+
+
+        var imagePrefix = 'imigis/spooce-box/';
+        var directions = ['purplenebula_rt', 'purplenebula_lf', 'purplenebula_ft', 'purplenebula_bk', 'purplenebula_up', 'purplenebula_dn'];
+        var imageSuffix = '.jpg';
+        var materialArray = [];
+        for (var i = 0; i < 6; i++) {
+            materialArray.push(new THREE.MeshBasicMaterial({
+                map: THREE.ImageUtils.loadTexture(imagePrefix + directions[i] + imageSuffix),
+                side: THREE.BackSide
+            }));
+        }
+        var skyGeometry = new THREE.CubeGeometry(5000, 5000, 5000); // size of your world
+        var skyMaterial = new THREE.MeshFaceMaterial(materialArray);
+        var skyBox = new THREE.Mesh(skyGeometry, skyMaterial);
+        // attach the skybox to a marker that follows camera X, Y, and Z movement
+        scene.add(skyBox);
+
+        animate();
+
+        // var speed = 200;
+        // var size = 5;
+        // var mass = 5;
+        // var direction_angle = 0;
+        // var height_angle = 0;
+
+        document.addEventListener('keydown', function(event) {
+            if (event.keyCode == 32) {
+                fireBullet();
+            }
+        });
+        var crossHairCoords = new THREE.Vector2();
+        var raycaster = new THREE.Raycaster();
+        var bulletMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+        var pos = new THREE.Vector3();
+        var bulletSpeed = 5000;
+
+        function fireBullet() {
+            console.log("fire!");
+            crossHairCoords.set(
+                (window.innerWidth / 2 / window.innerWidth) * 2 - 1, -(window.innerHeight / 2 / window.innerHeight) * 2 + 1
+            );
+
+            console.log("Window Inner Width: " + window.innerWidth / 2);
+            console.log("Window Inner Height: " + window.innerHeight / 2);
+
+            console.log(crossHairCoords);
+            raycaster.setFromCamera(crossHairCoords, camera);
+
+            // Creates a bullet and give it velocity
+            var bulletMass = 100;
+            var bulletRadius = 2;
+            var bullet = new Physijs.SphereMesh(
+                new THREE.SphereGeometry(bulletRadius, 10, 10),
+                bulletMaterial,
+                bulletMass
+            );
+
+            bullet.castShadow = true;
+            bullet.receiveShadow = true;
+
+            // bullet.position.copy(raycaster.ray.direction);
+            // bullet.position.add(raycaster.ray.origin);
+            //console.log(Shoop.position.x, Shoop.position.y, Shoop.position.z);
+            bullet.position.set(marker.position.x, marker.position.y, marker.position.z);
+
+            scene.add(bullet);
+
+            // bullet.addEventListener('collision', function(otherObj, relVelocity, relRotation, norm) {
+            //     if (otherObj.name == "asteroid") {
+            //         scene.remove(otherObj);
+            //         payloadOfExplosionParticles.push(new ExplodeAnimation(otherObj.position.x, otherObj.position.y, otherObj.position.z));
+            //     }
+            // });
+
+            pos.copy(raycaster.ray.direction);
+            pos.multiplyScalar(bulletSpeed);
+            bullet.setLinearVelocity(new THREE.Vector3(pos.x, pos.y, pos.z));
+            
+            setTimeout(function() {
+                scene.remove(bullet);
+            }, 5000);
+        }
+
+
+
+        //        var light = new THREE.DirectionalLight(0xffffff, .5);
+        // var light = new THREE.DirectionalLight(0xffffff, .99);
+        // light.position.set(0, 50, 0);
+        // light.castShadow = true;
+        // scene.add(light);
+    </script>
+</body>
+
+</html>

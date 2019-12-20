@@ -1,0 +1,198 @@
+<html>
+
+<head>
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+</head>
+
+<body>
+
+    <div id="blocker">
+
+        <div id="instructions">
+            <span style="font-size:40px">Click to play</span>
+            <br /> (W, A, S, D = Move, SPACE = Jump, MOUSE = Look around)
+
+            <br/>After the Death Star strike on the planet of Alderaan, peaces of the destroyed planet are hurdling towards the planet of Hoth.
+            <br/>It is your mission to protect the planet from the decimated remains.
+        </div>
+
+    </div>
+
+
+    <!-- Include other libraries here (keep three.js at the top): -->
+    <script src="js/Three.js"></script>
+    <script src="js/Flight_controls.js"></script>
+    <script type="text/javascript" src="js/physi.js"></script>
+    <!--<script src="js/OrbitControls.js"></script>-->
+
+    <script>
+        // Add variables that are defined in other libraries below to avoid warnings:
+        /* global THREE, Scoreboard, Physijs */
+
+        // ****** START CODING HERE! ****** 
+        Physijs.scripts.worker = 'js/physijs_worker.js';
+        Physijs.scripts.ammo = 'ammo.js';
+
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        var sceneWidth = 10000,
+            sceneHeight = 10000,
+            sceneDepth = 10000;
+
+        var scene = new Physijs.Scene();
+        scene.setGravity(new THREE.Vector3(0, 0, 0));
+
+        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+
+        var marker = new THREE.Object3D();
+        marker.add(camera);
+        scene.add(marker);
+
+        var blocker = document.getElementById('blocker');
+
+        var instructions = document.getElementById('instructions');
+
+        var controls = new THREE.FlyControls(marker);
+        controls.movementSpeed = 100;
+        controls.rollSpeed = Math.PI / 10;
+
+        var clock = new THREE.Clock();
+
+        //var controls = new THREE.OrbitControls(camera);
+
+        //controls.update() must be called after any manual changes to the camera's transform
+        camera.position.set(0, 0, 200);
+        //controls.update();
+
+        function animate() {
+            scene.simulate(); // <-- add this line
+            requestAnimationFrame(animate);
+
+            // required if controls.enableDamping or controls.autoRotate are set to true
+            //controls.update();
+
+            controls.update(clock.getDelta());
+
+            renderer.render(scene, camera);
+
+        }
+
+        var modelobj = new THREE.ObjectLoader();
+
+        modelobj.load('modils/spooce-shoops/green-spaceship.json', function(SpooceShoop) {
+            scene.add(SpooceShoop);
+            SpooceShoop.position.set(0, 0, 0);
+            SpooceShoop.scale.set(5, 5, 7.5);
+            marker.add(SpooceShoop);
+        });
+
+
+
+        var trippy = new THREE.PointLight(254734, 10000, 10000, 0);
+        trippy.position.set(0, 0, 0);
+        scene.add(trippy);
+
+        var doomlight = new THREE.PointLight(565656556565, 15, 10000, 10);
+        doomlight.position.set(1000, 1000, 1000);
+        scene.add(doomlight);
+
+
+
+
+        document.addEventListener("keydown", onDocumentKeyDown, false);
+        var infoIsOpen = true;
+
+        function onDocumentKeyDown(event) {
+
+            var keyCode = event.keyCode;
+            if (keyCode == 27) {
+
+                if (infoIsOpen == true) {
+                    blocker.style.display = 'none';
+                    instructions.style.display = 'none';
+                }
+                else {
+                    blocker.style.display = 'block';
+                    instructions.style.display = 'block';
+                }
+                infoIsOpen = !infoIsOpen;
+            }
+
+
+            // if (keyCode == 27) {
+
+            //     blocker.style.display = 'none'
+            //     instructions.style.display = 'none'
+
+            // }
+            console.log(keyCode);
+
+        }
+        var asteroidloader = new THREE.ObjectLoader();
+
+        // open a terminal to unzip a file
+        asteroidloader.load('modils/planetiod/asteroid.json', function(asteroid_obj) {
+
+            for (var i = 0; i < 500; i++) {
+                var clonedAsteroid = asteroid_obj.clone();
+
+                var asteroidBoxGeom = new THREE.BoxGeometry(25, 25, 25);
+                var asteroidBoxCover = new THREE.MeshNormalMaterial();
+                asteroidBoxCover.visible = false;
+                var asteroidBox = new Physijs.BoxMesh(asteroidBoxGeom, asteroidBoxCover);
+
+                var asteroidSize = Math.random()
+
+                clonedAsteroid.scale.set(asteroidSize, asteroidSize, asteroidSize);
+
+                //parents the complex graphics model to the simple collision geometry
+                asteroidBox.add(clonedAsteroid);
+                asteroidBox.name = "asteroid";
+
+                asteroidBox.position.set(-Math.random() * Math.floor(sceneWidth), -Math.random() * Math.floor(sceneHeight), -Math.random() * Math.floor(sceneDepth));
+                scene.add(asteroidBox);
+
+                var asteroidVelocity = asteroidBox.getLinearVelocity();
+                asteroidVelocity.z = 2000;
+                asteroidBox.setLinearVelocity(asteroidVelocity);
+
+                asteroidBox.rotation.set(Math.random() * Math.floor(360), Math.random() * Math.floor(360), Math.random() * Math.floor(360));
+                asteroidBox.__dirtyRotation = true;
+
+                asteroidBox.setAngularVelocity(
+                    new THREE.Vector3(Math.random() * 1, Math.random() * 1, Math.random() * 1)
+                );
+            }
+
+        });
+        var imagePrefix = 'imigis/spooce-box/';
+        var directions = ['purplenebula_rt', 'purplenebula_lf', 'purplenebula_ft', 'purplenebula_bk', 'purplenebula_up', 'purplenebula_dn'];
+        var imageSuffix = '.jpg';
+        var materialArray = [];
+        for (var i = 0; i < 6; i++) {
+            materialArray.push(new THREE.MeshBasicMaterial({
+                map: THREE.ImageUtils.loadTexture(imagePrefix + directions[i] + imageSuffix),
+                side: THREE.BackSide
+            }));
+        }
+        var skyGeometry = new THREE.CubeGeometry(5000, 5000, 5000); // size of your world
+        var skyMaterial = new THREE.MeshFaceMaterial(materialArray);
+        var skyBox = new THREE.Mesh(skyGeometry, skyMaterial);
+        // attach the skybox to a marker that follows camera X, Y, and Z movement
+        scene.add(skyBox);
+
+
+        animate();
+
+
+        //        var light = new THREE.DirectionalLight(0xffffff, .5);
+        // var light = new THREE.DirectionalLight(0xffffff, .99);
+        // light.position.set(0, 50, 0);
+        // light.castShadow = true;
+        // scene.add(light);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,106 @@
+<html>
+<link rel="stylesheet" type="text/css" href="css/style.css">
+
+<head></head>
+
+<body>
+
+    <div id="blocker">
+
+        <div id="instructions">
+            <span style="font-size:40px">Press esc to play</span>
+            <br /> (W, A, S, D = Move, SPACE = Jump, MOUSE = Look around)
+
+            <br/>After the Death Star strike on the planet of Alderaan, peaces of the destroyed planet are hurdling towards the planet of Hoth.
+            <br/>It is your mission to protect the planet from the decimated remains.
+        </div>
+
+    </div>
+    
+    <!-- Include other libraries here (keep three.js at the top): -->
+    <script src="js/Three.js"></script>
+    <script src="js/physi.js"></script>
+    <script src="js/Flight_controls.js"></script>
+    <script src="modules/skybox.js"></script>
+    <script src="modules/spaceplane.js"></script>
+    <script src="modules/lighting.js"></script>
+    <script src="modules/instructions.js"></script>
+    <script src="modules/asteroids.js"></script>
+    <!--<script src="js/OrbitControls.js"></script>-->
+
+    <script>
+        // Add variables that are defined in other libraries below to avoid warnings:
+        /* global THREE, Scoreboard, Physijs, initSkyBox, fireBullet, createSpacePlane, addLighting, initInstructions, initAsteroids, payloadOfExplosionParticles */
+
+        // ****** START CODING HERE! ****** 
+        Physijs.scripts.worker = 'js/physijs_worker.js';
+        Physijs.scripts.ammo = 'ammo.js';
+        // var skyboxModule = 'modules/skybox.js';
+        
+        //global (accessible anywhere) vars
+        var renderer;
+        var scene;
+        var camera;
+        var marker;
+        
+        var sceneWidth = 10000,
+            sceneHeight = 10000,
+            sceneDepth = 10000;
+            
+        //initial set up
+        init();
+        
+        function init() {
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+            
+            scene = new Physijs.Scene();
+            scene.setGravity(new THREE.Vector3(0, 0, 0));
+        
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+        
+            marker = new THREE.Object3D();
+            
+            marker.add(camera);
+            scene.add(marker);
+        
+            camera.position.set(0, 15, 200);
+        }
+        
+        var controls = new THREE.FlyControls(marker);
+        controls.movementSpeed = 250;
+        controls.rollSpeed = Math.PI / 10;
+        var clock = new THREE.Clock();
+        
+        
+        //build the universe
+        initSkyBox();
+        createSpacePlane();
+        addLighting();
+        initAsteroids();
+        initInstructions();
+        
+        
+        
+        function animate() {
+            
+                     var pCount = payloadOfExplosionParticles.length;
+            while (pCount--) {
+                payloadOfExplosionParticles[pCount].update();
+            }
+
+            scene.simulate();
+            requestAnimationFrame(animate);
+
+            controls.update(clock.getDelta());
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+    </script>
+</body>
+
+</html>

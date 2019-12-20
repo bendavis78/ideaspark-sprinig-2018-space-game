@@ -1,0 +1,336 @@
+<html>
+<link rel="stylesheet" type="text/css" href="css/style.css">
+
+<head></head>
+
+<body>
+    <!-- Include other libraries here (keep three.js at the top): -->
+    <script src="js/Three.js"></script>
+    <!--<script src="js/OrbitControls.js"></script>-->
+    <script src="js/FlyControls.js"></script>
+    <script type="text/javascript" src="js/physi.js"></script>
+
+    <script>
+        //*********REFERENCE CARDS
+        // https://boldidea.org/static/gamingjs/reference-cards/
+        //*********CLARA
+        //https://clara.io
+
+
+        // Add variables that are defined in other libraries below to avoid warnings:
+        /* global THREE, Scoreboard, Physijs */
+
+        // ****** START CODING HERE! ****** 
+
+        Physijs.scripts.worker = 'js/physijs_worker.js';
+        Physijs.scripts.ammo = 'ammo.js';
+
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        var scene = new Physijs.Scene();
+        scene.setGravity(new THREE.Vector3(0, 0, 0));
+
+        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+        camera.position.set(0, 2, 4);
+        // Physijs.scripts.worker = 'js/physijs_worker.js';
+        // Physijs.scripts.ammo = 'ammo.js';
+
+        //var controls = new THREE.OrbitControls(camera);
+
+
+
+        var marker = new THREE.Object3D();
+        //scene.add(camera);
+        scene.add(marker);
+
+
+
+        var controls, clock = new THREE.Clock();
+
+
+
+        var sceneWidth = 10000,
+            sceneHeight = 10000,
+            sceneDepth = 10000;
+
+        marker.add(camera);
+
+        controls = new THREE.FlyControls(marker);
+        controls.movementSpeed = 250;
+        controls.rollSpeed = Math.PI / 10;
+
+
+        // Create a DirectionalLight and turn on shadows for the light
+        var zposLight = new THREE.DirectionalLight(0xffffff, 1);
+        zposLight.position.set(0, 0, sceneDepth);
+        zposLight.castShadow = true;
+        scene.add(zposLight);
+
+        var znegLight = new THREE.DirectionalLight(0xffffff, 1);
+        znegLight.position.set(0, 0, -sceneDepth);
+        znegLight.castShadow = true;
+        scene.add(znegLight);
+
+        var xnegLight = new THREE.DirectionalLight(0xffffff, 1);
+        xnegLight.position.set(-sceneWidth, 0, 0);
+        xnegLight.castShadow = true;
+        scene.add(xnegLight);
+
+        var xposLight = new THREE.DirectionalLight(0xffffff, 1);
+        xposLight.position.set(sceneWidth, 0, 0);
+        xposLight.castShadow = true;
+        scene.add(xposLight);
+
+        var ynegLight = new THREE.DirectionalLight(0xffffff, 1);
+        ynegLight.position.set(-sceneWidth, 0, 0);
+        ynegLight.castShadow = true;
+        scene.add(ynegLight);
+
+        var yposLight = new THREE.DirectionalLight(0xffffff, 1);
+        yposLight.position.set(sceneWidth, 0, 0);
+        yposLight.castShadow = true;
+        scene.add(yposLight);
+
+
+        var shiploader = new THREE.ObjectLoader();
+
+        //open a terminal to unzip a file
+        shiploader.load('models/spaceplane/sg-light-destroyer.json', function(obj) {
+            obj.position.set(0, 0, 0);
+            obj.scale.set(1, 1, 1);
+
+            marker.add(obj);
+
+            addKeyboardControl();
+
+        });
+
+        var asteroidloader = new THREE.ObjectLoader();
+
+        // open a terminal to unzip a file
+        asteroidloader.load('models/asteroid/asteroid.json', function(asteroid_obj) {
+
+            for (var i = 0; i < 500; i++) {
+                var clonedAsteroid = asteroid_obj.clone();
+
+                var asteroidBoxGeom = new THREE.BoxGeometry(25, 25, 25);
+                var asteroidBoxCover = new THREE.MeshNormalMaterial();
+                asteroidBoxCover.visible = false;
+                var asteroidBox = new Physijs.BoxMesh(asteroidBoxGeom, asteroidBoxCover);
+
+                clonedAsteroid.scale.set(25, 25, 25);
+
+                //parents the complex graphics model to the simple collision geometry
+                asteroidBox.add(clonedAsteroid);
+                asteroidBox.name = "asteroid";
+
+                asteroidBox.position.set(-Math.random() * Math.floor(sceneWidth), -Math.random() * Math.floor(sceneHeight), -Math.random() * Math.floor(sceneDepth));
+                scene.add(asteroidBox);
+
+                var asteroidVelocity = asteroidBox.getLinearVelocity();
+                asteroidVelocity.z = 200;
+                asteroidBox.setLinearVelocity(asteroidVelocity);
+
+                asteroidBox.rotation.set(Math.random() * Math.floor(360), Math.random() * Math.floor(360), Math.random() * Math.floor(360));
+                asteroidBox.__dirtyRotation = true;
+
+                asteroidBox.setAngularVelocity(
+                    new THREE.Vector3(Math.random() * 1, Math.random() * 1, Math.random() * 1)
+                );
+            }
+
+        });
+
+        function addKeyboardControl() {
+
+            document.addEventListener('keydown', fireBullet, false);
+
+
+
+            var crossHairCoords = new THREE.Vector2();
+            var raycaster = new THREE.Raycaster();
+            var bulletMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+            var pos = new THREE.Vector3();
+            var bulletSpeed = 5000;
+
+            function fireBullet(event) {
+                console.log("fire!");
+                crossHairCoords.set(
+                    (window.innerWidth / 2 / window.innerWidth) * 2 - 1, -(window.innerHeight / 2 / window.innerHeight) * 2 + 1
+                );
+
+                console.log("Mouse x: " + event.clientX);
+                console.log("Mouse y: " + event.clientY);
+                console.log("Window Inner Width: " + window.innerWidth / 2);
+                console.log("Window Inner Height: " + window.innerHeight / 2);
+
+                console.log(crossHairCoords);
+                raycaster.setFromCamera(crossHairCoords, camera);
+
+                // Creates a bullet and give it velocity
+                var bulletMass = 100;
+                var bulletRadius = 2;
+                var bullet = new Physijs.SphereMesh(
+                    new THREE.SphereGeometry(bulletRadius, 10, 10),
+                    bulletMaterial,
+                    bulletMass
+                );
+
+                bullet.castShadow = true;
+                bullet.receiveShadow = true;
+
+                bullet.position.copy(raycaster.ray.direction);
+                bullet.position.add(raycaster.ray.origin);
+
+                scene.add(bullet);
+
+                bullet.addEventListener('collision', function(otherObj, relVelocity, relRotation, norm) {
+                    if (otherObj.name == "asteroid") {
+                        scene.remove(otherObj);
+                        payloadOfExplosionParticles.push(new ExplodeAnimation(otherObj.position.x, otherObj.position.y, otherObj.position.z));
+                    }
+                });
+
+                pos.copy(raycaster.ray.direction);
+                pos.multiplyScalar(bulletSpeed);
+                bullet.setLinearVelocity(new THREE.Vector3(pos.x, pos.y, pos.z));
+            }
+        
+
+
+        //////////////explosion settings/////////
+        var explosionParticleSpeed = 80;
+        var totalExplosionParticles = 1000;
+        var explosionParticleSize = 10;
+        var explosionColors = [0xFF0FFF, 0xCCFF00, 0xFF000F, 0x996600, 0xFFFFFF];
+
+        var explosionParticleDirections = [];
+        var payloadOfExplosionParticles = [];
+
+        function ExplodeAnimation(x, y, z) {
+            var geometry = new THREE.Geometry();
+
+            for (var i = 0; i < totalExplosionParticles; i++) {
+                var vertex = new THREE.Vector3();
+                vertex.x = x;
+                vertex.y = y;
+                vertex.z = z;
+
+                geometry.vertices.push(vertex);
+                explosionParticleDirections.push({
+                    x: (Math.random() * explosionParticleSpeed) - (explosionParticleSpeed / 2),
+                    y: (Math.random() * explosionParticleSpeed) - (explosionParticleSpeed / 2),
+                    z: (Math.random() * explosionParticleSpeed) - (explosionParticleSpeed / 2)
+                });
+            }
+            var material = new THREE.PointsMaterial({ size: explosionParticleSize, color: explosionColors[Math.round(Math.random() * explosionColors.length)] });
+            var particles = new THREE.Points(geometry, material);
+
+            this.object = particles;
+            this.status = true;
+
+            this.xDir = (Math.random() * explosionParticleSpeed) - (explosionParticleSpeed / 2);
+            this.yDir = (Math.random() * explosionParticleSpeed) - (explosionParticleSpeed / 2);
+            this.zDir = (Math.random() * explosionParticleSpeed) - (explosionParticleSpeed / 2);
+
+            scene.add(this.object);
+
+            this.update = function() {
+                if (this.status == true) {
+                    var pCount = totalExplosionParticles;
+                    while (pCount--) {
+                        var particle = this.object.geometry.vertices[pCount];
+                        particle.y += explosionParticleDirections[pCount].y;
+                        particle.x += explosionParticleDirections[pCount].x;
+                        particle.z += explosionParticleDirections[pCount].z;
+                    }
+                    this.object.geometry.verticesNeedUpdate = true;
+                }
+            };
+
+        }
+
+        function animate() {
+
+            //explosion
+            var pCount = payloadOfExplosionParticles.length;
+            while (pCount--) {
+                payloadOfExplosionParticles[pCount].update();
+            }
+
+            // required if controls.enableDamping or controls.autoRotate are set to true
+            //controls.update();
+
+            controls.update(clock.getDelta());
+            scene.simulate();
+
+            //scene.updateMatrixWorld();
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+            //scene.simulate();
+            // for(var index=0; index<bullets.length; index+=1){
+            //     if(bullets[index] === undefined ) continue;
+            //     if(bullets[index].alive == false ) {
+            //         bullets.splice(index, 1);
+            //         continue;
+            //     }
+
+            //     bullets[index].position.add(bullets[index].velocity);
+            // }
+
+            // if(canShoot > 0) canShoot -= 1;
+
+        }
+
+        animate();
+
+
+
+
+
+
+        //         requestAnimationFrame( render );
+        // 		scene.simulate();
+
+
+        //         render = function() {
+        //         	requestAnimationFrame( render );
+        //         	if ( vehicle ) {
+        //         		camera.position.copy( vehicle.mesh.position ).add( new THREE.Vector3( 40, 25, 40 ) );
+        //         		camera.lookAt( vehicle.mesh.position );
+        //         		light.target.position.copy( vehicle.mesh.position );
+        //         		light.position.addVectors( light.target.position, new THREE.Vector3( 20, 20, -15 ) );
+        //         	}
+        //         	renderer.render( scene, camera );
+        //         	render_stats.update();
+        //         };
+
+
+
+
+
+
+
+        //skybox
+        var imagePrefix = 'images/skybox/';
+        var directions = ['xpos', 'xneg', 'ypos', 'yneg', 'zpos', 'zneg'];
+        var imageSuffix = '.jpg';
+        var materialArray = [];
+        for (var i = 0; i < 6; i++) {
+            materialArray.push(new THREE.MeshBasicMaterial({
+                map: THREE.ImageUtils.loadTexture(imagePrefix + directions[i] + imageSuffix),
+                side: THREE.BackSide
+            }));
+        }
+        var skyGeometry = new THREE.CubeGeometry(sceneWidth, sceneHeight, sceneDepth); // size of your world
+        var skyMaterial = new THREE.MeshFaceMaterial(materialArray);
+        var skyBox = new THREE.Mesh(skyGeometry, skyMaterial);
+        // attach the skybox to a marker that follows camera X, Y, and Z movement
+        scene.add(skyBox);
+    </script>
+</body>
+
+</html>
